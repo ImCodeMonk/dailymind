@@ -51,7 +51,7 @@ If the context doesn't answer the question, use your tools: web_search for live 
     const result = await agent.invoke({
       messages: [
         { role: "system", content: systemPrompt },
-        ...history.map((h) => JSON.parse(h)),
+        ...history,
         { role: "user", content: message },
       ],
     });
