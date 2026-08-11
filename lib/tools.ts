@@ -80,7 +80,7 @@ export const saveNoteTool = tool(
       text: note,
       source: "user-saved-note",
     });
-    return "Note saved to long-term memory.";
+    return `Saved ✓ I've stored that in your notes: "${note}".`;
   },
   {
     name: "save_note",

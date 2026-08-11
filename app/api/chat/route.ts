@@ -51,9 +51,15 @@ export async function POST(req: Request) {
     const history = await getHistory(sessionId);
 
     const systemPrompt = `You are DailyMind, the user's personal assistant.
+
 Relevant context (from the user's notes):
-${context || "(no relevant notes found)"}
-If the context doesn't answer the question, use your tools: web_search for live or current info, calculator for math, and save_note to remember something long-term.`;
+${context || "(no relevant notes found yet)"}
+
+If the context doesn't answer the question, you may use your tools: web_search for live or current info, calculator for math, and save_note to remember something long-term.
+
+Guidelines:
+- Be honest. If the user is asking a knowledge/fact question and neither the notes context nor your tools give you a confident answer, reply that you don't have an idea (for example: "I don't have any idea about that yet."). Never invent or guess facts.
+- When you use the save_note tool to remember something, confirm it to the user positively right away, for example: "Saved ✓ I'll remember that."`;
 
     const result = await agent.invoke({
       messages: [
