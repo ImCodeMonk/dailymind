@@ -1,5 +1,8 @@
 import { llm } from "@/lib/llm";
 import { embed, queryVectors } from "@/lib/vectorstore";
+import { getHistory, pushMessage } from "@/lib/memory";
+
+const DEFAULT_SESSION = "local-user";
 
 export async function POST(req: Request) {
   try {
@@ -10,6 +13,10 @@ export async function POST(req: Request) {
         : typeof body?.message === "string"
           ? body.message
           : "";
+    const sessionId =
+      typeof body?.sessionId === "string" && body.sessionId.trim()
+        ? body.sessionId
+        : DEFAULT_SESSION;
 
     if (!message.trim()) {
       return Response.json(
@@ -25,14 +32,19 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .join("\n---\n");
 
-    const prompt = `Use this context if relevant:\n${context}\n\nQuestion: ${message}`;
+    const history = await getHistory(sessionId);
+
+    const prompt = `Context:\n${context}\n\nConversation so far:\n${history.join("\n")}\n\nUser: ${message}`;
     const result = await llm.invoke(prompt);
     const reply =
       typeof result?.content === "string"
         ? result.content
         : JSON.stringify(result?.content ?? result);
 
-    return Response.json({ reply });
+    await pushMessage(sessionId, "user", message);
+    await pushMessage(sessionId, "assistant", reply);
+
+    return Response.json({ reply, sessionId });
   } catch (error) {
     console.error("Chat API error:", error);
     return Response.json(
