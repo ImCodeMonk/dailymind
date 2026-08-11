@@ -156,4 +156,8 @@ A full, step-by-step build guide (accounts, every phase's code, and verification
 
 ## 📄 License
 
-Released for personal and educational use — built as a zero-cost learning project.
+> *"Your second brain should be free — just like your curiosity."* 😄
+
+Released for personal and educational use. Built as a **zero-cost** learning project with Groq, Upstash, Cohere, Tavily, and Vercel.
+
+Learn from it, remix it, and build your own DailyMind. 🚀
