@@ -53,7 +53,12 @@ npm install
 
 ### 2. Add your API keys
 
-Create a file named `.env.local` in the project root and fill in **all seven** values:
+Copy the template to a local file and fill in **all seven** values (the real secrets live only in `.env.local`, never committed):
+
+```bash
+cp .env.example .env.local   # macOS/Linux
+# PowerShell: Copy-Item .env.example .env.local
+```
 
 ```bash
 GROQ_API_KEY=
