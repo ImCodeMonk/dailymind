@@ -1,8 +1,17 @@
 import { llm } from "@/lib/llm";
 import { embed, queryVectors } from "@/lib/vectorstore";
 import { getHistory, pushMessage } from "@/lib/memory";
+import { searchTool, calculatorTool, saveNoteTool } from "@/lib/tools";
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
 
 const DEFAULT_SESSION = "local-user";
+
+// The ReAct agent can decide to call tools (web search, calculator, save note)
+// instead of only answering from RAG context.
+const agent = createReactAgent({
+  llm,
+  tools: [searchTool, calculatorTool, saveNoteTool],
+});
 
 export async function POST(req: Request) {
   try {
@@ -34,12 +43,24 @@ export async function POST(req: Request) {
 
     const history = await getHistory(sessionId);
 
-    const prompt = `Context:\n${context}\n\nConversation so far:\n${history.join("\n")}\n\nUser: ${message}`;
-    const result = await llm.invoke(prompt);
+    const systemPrompt = `You are DailyMind, the user's personal assistant.
+Relevant context (from the user's notes):
+${context || "(no relevant notes found)"}
+If the context doesn't answer the question, use your tools: web_search for live or current info, calculator for math, and save_note to remember something long-term.`;
+
+    const result = await agent.invoke({
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...history.map((h) => JSON.parse(h)),
+        { role: "user", content: message },
+      ],
+    });
+
+    const last = result.messages[result.messages.length - 1];
     const reply =
-      typeof result?.content === "string"
-        ? result.content
-        : JSON.stringify(result?.content ?? result);
+      typeof last?.content === "string"
+        ? last.content
+        : JSON.stringify(last?.content ?? last ?? result);
 
     await pushMessage(sessionId, "user", message);
     await pushMessage(sessionId, "assistant", reply);
