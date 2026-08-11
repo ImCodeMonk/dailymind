@@ -36,7 +36,14 @@ export async function POST(req: Request) {
 
     const queryVector = await embed(message);
     const results = await queryVectors(queryVector, 4);
-    const context = results
+
+    // Phase 8: prioritize verified corrections so corrected info leads the context.
+    const sortedResults = [...results].sort((a, b) => {
+      const aCorr = a.metadata?.source === "verified_correction" ? 0 : 1;
+      const bCorr = b.metadata?.source === "verified_correction" ? 0 : 1;
+      return aCorr - bCorr;
+    });
+    const context = sortedResults
       .map((r) => r.metadata?.text)
       .filter(Boolean)
       .join("\n---\n");

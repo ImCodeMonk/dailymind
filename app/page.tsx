@@ -11,6 +11,11 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Record<number, "up" | "down">>({});
+  const [correctionFor, setCorrectionFor] = useState<number | null>(null);
+  const [correction, setCorrection] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   // Keep the view scrolled to the newest message.
@@ -45,6 +50,63 @@ export default function Home() {
     }
   }
 
+  // Find the user question that a given assistant answer replies to.
+  function findQuestionIndex(assistantIdx: number): number {
+    for (let j = assistantIdx - 1; j >= 0; j--) {
+      if (messages[j].role === "user") return j;
+    }
+    return -1;
+  }
+
+  function rateUp(i: number) {
+    setFeedback((f) => ({ ...f, [i]: "up" }));
+    setCorrectionFor((c) => (c === i ? null : c));
+    setNotice(null);
+  }
+
+  function rateDown(i: number) {
+    setFeedback((f) => ({ ...f, [i]: "down" }));
+    setCorrectionFor(i);
+    setNotice(null);
+  }
+
+  // Phase 8: send the user's correction to /api/ingest as a verified correction,
+  // paired with the original question so it retrieves well.
+  async function submitCorrection(assistantIdx: number) {
+    const text = correction.trim();
+    if (!text || submitting) return;
+    setSubmitting(true);
+    setNotice(null);
+    const qIdx = findQuestionIndex(assistantIdx);
+    const question = qIdx >= 0 ? messages[qIdx].content : "";
+    const payload = {
+      text: question
+        ? `Question: ${question}\nCorrection: ${text}`
+        : text,
+      source: "verified_correction",
+    };
+    try {
+      const res = await fetch("/api/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save correction.");
+      setCorrectionFor(null);
+      setCorrection("");
+      setNotice("✅ Correction saved — it will be prioritized next time.");
+    } catch (err) {
+      setNotice(
+        err instanceof Error
+          ? `⚠️ ${err.message}`
+          : "⚠️ Failed to save correction."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <main className="mx-auto flex h-full w-full max-w-3xl flex-col bg-background px-4 py-6">
       <header className="mb-4 flex items-center gap-2 border-b pb-4">
@@ -75,6 +137,75 @@ export default function Home() {
             >
               {m.content}
             </span>
+
+            {m.role === "assistant" && (
+              <div className="mt-1 flex items-center gap-1 text-sm">
+                <button
+                  onClick={() => rateUp(i)}
+                  title="Good answer"
+                  className={
+                    "rounded px-1.5 py-0.5 transition-colors " +
+                    (feedback[i] === "up"
+                      ? "bg-emerald-100 dark:bg-emerald-900"
+                      : "opacity-60 hover:opacity-100")
+                  }
+                >
+                  👍
+                </button>
+                <button
+                  onClick={() => rateDown(i)}
+                  title="Wrong answer — provide a correction"
+                  className={
+                    "rounded px-1.5 py-0.5 transition-colors " +
+                    (feedback[i] === "down"
+                      ? "bg-rose-100 dark:bg-rose-900"
+                      : "opacity-60 hover:opacity-100")
+                  }
+                >
+                  👎
+                </button>
+                {feedback[i] === "up" && (
+                  <span className="ml-1 text-xs text-zinc-500">Thanks!</span>
+                )}
+                {feedback[i] === "down" && correctionFor !== i && (
+                  <span className="ml-1 text-xs text-zinc-500">
+                    Marked as incorrect.
+                  </span>
+                )}
+                {correctionFor === i && (
+                  <form
+                    className="ml-1 flex flex-1 items-center gap-1"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      submitCorrection(i);
+                    }}
+                  >
+                    <input
+                      autoFocus
+                      className="min-w-0 flex-1 rounded-lg border px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-zinc-400"
+                      value={correction}
+                      onChange={(e) => setCorrection(e.target.value)}
+                      placeholder="What's the correct answer?"
+                      disabled={submitting}
+                    />
+                    <button
+                      type="submit"
+                      disabled={submitting || !correction.trim()}
+                      className="rounded-lg bg-foreground px-2 py-1 text-xs font-medium text-background disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCorrectionFor(null)}
+                      className="rounded-lg px-2 py-1 text-xs text-zinc-500"
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
           </div>
         ))}
         {loading && (
@@ -89,6 +220,12 @@ export default function Home() {
 
       {error && (
         <p className="mb-2 text-center text-sm text-red-500">⚠️ {error}</p>
+      )}
+
+      {notice && (
+        <p className="mb-2 text-center text-sm text-zinc-600 dark:text-zinc-300">
+          {notice}
+        </p>
       )}
 
       <div className="flex gap-2 border-t pt-3">
