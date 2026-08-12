@@ -13,6 +13,44 @@ const agent = createReactAgent({
   tools: [searchTool, calculatorTool, saveNoteTool],
 });
 
+/**
+ * Extract a clean, human-readable answer from the agent's message trace.
+ * It ignores user/tool messages and AI messages that only carry pending tool
+ * calls, and strips any lingering <tool_name>{"..."}</tool_name> wrappers so
+ * raw tool calls / tool results never leak into the chat reply.
+ */
+function extractReply(messages: unknown[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i] as {
+      getType?: () => string;
+      role?: string;
+      content?: unknown;
+      tool_calls?: unknown[];
+    };
+    const kind = typeof msg?.getType === "function" ? msg.getType() : msg?.role;
+    const calledTool = Array.isArray(msg?.tool_calls) && msg.tool_calls.length > 0;
+    if (kind === "ai" && !calledTool && typeof msg?.content === "string") {
+      const text = (msg.content as string)
+        .replace(/<[a-z_]+>\s*\{[\s\S]*?\}\s*<\/[a-z_]+>/gi, "")
+        .trim();
+      if (text) return text;
+    }
+  }
+  return "";
+}
+
+/** True if this run invoked the save_note tool at any point. */
+function usedSaveNote(messages: unknown[]): boolean {
+  return messages.some((m) => {
+    const msg = m as { tool_calls?: { name?: string }[]; content?: unknown };
+    return (
+      (Array.isArray(msg?.tool_calls) &&
+        msg.tool_calls.some((tc) => tc?.name === "save_note")) ||
+      (typeof msg?.content === "string" && /\bsave_note\b/.test(msg.content))
+    );
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null);
@@ -50,16 +88,15 @@ export async function POST(req: Request) {
 
     const history = await getHistory(sessionId);
 
-    const systemPrompt = `You are DailyMind, the user's personal assistant.
+    const systemPrompt = `You are DailyMind, a personal assistant.
+Notes context:
+${context || "(none yet)"}
 
-Relevant context (from the user's notes):
-${context || "(no relevant notes found yet)"}
+If the notes are not enough, use tools: web_search, calculator, or save_note.
 
-If the context doesn't answer the question, you may use your tools: web_search for live or current info, calculator for math, and save_note to remember something long-term.
-
-Guidelines:
-- Be honest. If the user is asking a knowledge/fact question and neither the notes context nor your tools give you a confident answer, reply that you don't have an idea (for example: "I don't have any idea about that yet."). Never invent or guess facts.
-- When you use the save_note tool to remember something, confirm it to the user positively right away, for example: "Saved ✓ I'll remember that."`;
+Rules:
+- Never invent facts. If you don't know, reply: "I don't have any idea about that yet."
+- After saving a note, confirm briefly with "Saved ✓".`;
 
     const result = await agent.invoke({
       messages: [
@@ -69,11 +106,13 @@ Guidelines:
       ],
     });
 
-    const last = result.messages[result.messages.length - 1];
-    const reply =
-      typeof last?.content === "string"
-        ? last.content
-        : JSON.stringify(last?.content ?? last ?? result);
+    let reply = extractReply(result.messages);
+    if (!reply) {
+      // The agent ended without prose (e.g. it only emitted a tool call).
+      reply = usedSaveNote(result.messages)
+        ? "Saved ✓ I'll keep that in mind."
+        : "Done.";
+    }
 
     await pushMessage(sessionId, "user", message);
     await pushMessage(sessionId, "assistant", reply);
