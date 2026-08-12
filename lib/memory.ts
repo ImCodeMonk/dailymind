@@ -51,3 +51,64 @@ export async function pushMessage(
     JSON.stringify({ role, content })
   );
 }
+
+/** Push a saved note (original text) into Redis list for quick retrieval. */
+export async function pushSavedNote(text: string, source = "user-saved-note") {
+  await getRedis().rpush(
+    `saved_notes`,
+    JSON.stringify({ text, source, ts: Date.now() })
+  );
+}
+
+/** Get the most recent saved note (most recent last) */
+export async function getLastSavedNote() {
+  const items = await getRedis().lrange(`saved_notes`, -1, -1);
+  if (!items || items.length === 0) return null;
+  const entry = items[0];
+  if (typeof entry === "string") {
+    try {
+      return JSON.parse(entry);
+    } catch {
+      return { text: String(entry) };
+    }
+  }
+  return entry;
+}
+
+/** Push a 'needs_fix' correction into Redis for upgrade workflows. */
+export async function pushNeedFix(text: string) {
+  await getRedis().rpush(
+    `needs_fix`,
+    JSON.stringify({ text, ts: Date.now() })
+  );
+}
+
+export async function getNeedFixList() {
+  const items = await getRedis().lrange(`needs_fix`, 0, -1);
+  return (items || []).map((it) => {
+    if (typeof it === "string") {
+      try {
+        return JSON.parse(it);
+      } catch {
+        return { text: String(it) };
+      }
+    }
+    return it;
+  });
+}
+
+export async function removeNeedFixAtIndexes(indexes: number[]) {
+  const list = await getRedis().lrange(`needs_fix`, 0, -1);
+  const parsed = (list || []).map((it) => {
+    if (typeof it === 'string') {
+      try { return JSON.parse(it); } catch { return { text: String(it) }; }
+    }
+    return it;
+  });
+  const remaining = parsed.filter((_, i) => !indexes.includes(i));
+  // replace the list with remaining items
+  await getRedis().del(`needs_fix`);
+  if (remaining.length > 0) {
+    await getRedis().rpush(`needs_fix`, ...remaining.map((r) => JSON.stringify(r)));
+  }
+}

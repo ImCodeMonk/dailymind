@@ -1,5 +1,6 @@
 import { embed, upsertVector } from "@/lib/vectorstore";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { pushSavedNote, pushNeedFix } from "@/lib/memory";
 
 export async function POST(req: Request) {
   try {
@@ -26,6 +27,19 @@ export async function POST(req: Request) {
         text: chunk,
         source,
       });
+    }
+
+    // Push the original full text into Redis for quick last-note retrieval
+    try {
+      if (source === "user-saved-note") {
+        await pushSavedNote(text, source);
+      }
+      if (source === "needs_fix") {
+        await pushNeedFix(text);
+      }
+    } catch (err) {
+      // non-fatal
+      console.warn("Failed to push metadata to Redis", err);
     }
 
     return Response.json({ chunksStored: chunks.length });

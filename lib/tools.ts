@@ -80,7 +80,8 @@ export const saveNoteTool = tool(
       text: note,
       source: "user-saved-note",
     });
-    return `Saved ✓ I've stored that in your notes: "${note}".`;
+    // Return a short confirmation only to avoid dumping stored content into replies
+    return `Saved ✓`;
   },
   {
     name: "save_note",
