@@ -46,7 +46,7 @@ A **100% free-tier** AI assistant that remembers your notes, chats with you, and
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/<your-username>/dailymind.git
+git clone https://github.com/ImCodeMonk/dailymind.git
 cd dailymind
 npm install
 ```
