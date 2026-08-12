@@ -279,8 +279,8 @@ export default function Home() {
   ).length;
 
   return (
-    <main className="mx-auto flex h-screen w-full max-w-7xl flex-col gap-6 px-4 py-4 lg:flex-row lg:items-start">
-      <aside className="flex min-h-0 flex-1 flex-col gap-6 rounded-[32px] border border-zinc-200 bg-white/90 p-5 shadow-2xl shadow-zinc-200/30 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80 dark:shadow-black/20 lg:max-w-[360px]">
+    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-start">
+      <aside className="flex w-full min-h-0 flex-1 flex-col gap-6 rounded-[32px] border border-zinc-200 bg-white/90 p-5 shadow-2xl shadow-zinc-200/30 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80 dark:shadow-black/20 lg:max-w-[360px] max-h-[calc(100vh-6rem)] overflow-auto lg:max-h-none">
         <div className="space-y-4">
           <div className="rounded-3xl bg-gradient-to-r from-sky-500/15 to-emerald-500/10 p-5 text-slate-950 dark:from-sky-400/15 dark:to-emerald-400/10 dark:text-slate-100">
             <p className="text-sm uppercase tracking-[0.25em] text-sky-600 dark:text-sky-300">
@@ -443,7 +443,7 @@ export default function Home() {
         </div>
       </aside>
 
-      <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[32px] border border-zinc-200 bg-white/90 p-5 pb-28 shadow-2xl shadow-zinc-200/30 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80 dark:shadow-black/20">
+      <section className="relative flex min-h-[calc(100vh-14rem)] flex-1 flex-col overflow-hidden rounded-[32px] border border-zinc-200 bg-white/90 p-5 pb-28 shadow-2xl shadow-zinc-200/30 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80 dark:shadow-black/20 lg:min-h-0">
         <div className="mb-5 rounded-[32px] bg-gradient-to-r from-emerald-500/10 via-sky-100/50 to-violet-500/10 p-5 text-zinc-900 dark:from-emerald-500/10 dark:via-slate-900/60 dark:to-violet-500/10 dark:text-zinc-100">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -580,8 +580,8 @@ export default function Home() {
         )}
 
         <div className="absolute inset-x-0 bottom-0 z-20 border-t border-zinc-200 bg-white/95 py-4 backdrop-blur-lg dark:border-zinc-800 dark:bg-zinc-950/95">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-0 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-0 sm:flex-row sm:items-center sm:gap-4">
+            <div className="relative flex-1 min-w-0">
               <div className="relative">
                 <input
                   ref={inputRef}
@@ -637,7 +637,7 @@ export default function Home() {
               )}
             </div>
             <button
-              className="rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200"
+              className="w-full rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200 sm:w-auto"
               onClick={sendMessage}
               disabled={loading || !input.trim()}
             >
